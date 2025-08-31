@@ -1,0 +1,8 @@
+Django>=4.2
+djangorestframework
+psycopg2-binary
+dj-database-url
+python-dotenv
+celery[redis]
+redis
+pgvector        # optional later when you enable vectors in Supabase
