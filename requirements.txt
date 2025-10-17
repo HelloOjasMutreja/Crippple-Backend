@@ -13,6 +13,7 @@ dj-database-url==3.0.1
 dj-rest-auth==7.0.1
 Django==5.2.5
 django-allauth==65.11.0
+django-cors-headers==4.6.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
 idna==3.10
@@ -20,6 +21,8 @@ kombu==5.5.4
 numpy==2.3.2
 packaging==25.0
 pgvector==0.4.1
+playwright==1.55.0
+playwright-stealth==2.0.0
 prompt_toolkit==3.0.52
 psycopg==3.2.9
 psycopg-binary==3.2.9

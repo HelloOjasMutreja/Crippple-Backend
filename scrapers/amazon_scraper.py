@@ -1,33 +1,77 @@
 from playwright.sync_api import sync_playwright
-from products.models import Product
+import logging
 
-def scrape_amazon(query="hoodie"):
+logger = logging.getLogger(__name__)
+
+
+def scrape_amazon(query="hoodie", max_results=20, headless=True):
+    """
+    Scrape Amazon India for products matching the query.
+    
+    Args:
+        query: Search query
+        max_results: Maximum number of results to return
+        headless: Run browser in headless mode
+        
+    Returns:
+        List of product dictionaries
+    """
     results = []
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.goto(f"https://www.amazon.in/s?k={query}", timeout=10000)
+        try:
+            browser = p.chromium.launch(headless=headless)
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                           "AppleWebKit/537.36 (KHTML, like Gecko) "
+                           "Chrome/117.0.0.0 Safari/537.36"
+            )
+            page = context.new_page()
+            
+            url = f"https://www.amazon.in/s?k={query}"
+            logger.info(f"Scraping Amazon: {url}")
+            page.goto(url, timeout=30000)
 
-        items = page.locator(".s-result-item")
+            items = page.locator(".s-result-item[data-component-type='s-search-result']")
+            count = min(items.count(), max_results)
+            
+            for i in range(count):
+                try:
+                    item = items.nth(i)
+                    
+                    # Extract title
+                    title_elem = item.locator("h2 a span")
+                    title = title_elem.inner_text(timeout=2000) if title_elem.count() > 0 else None
+                    
+                    # Extract link
+                    link_elem = item.locator("h2 a")
+                    link = link_elem.get_attribute("href", timeout=2000) if link_elem.count() > 0 else None
+                    
+                    # Extract price
+                    price_elem = item.locator(".a-price-whole")
+                    price = price_elem.inner_text(timeout=2000) if price_elem.count() > 0 else None
+                    
+                    # Extract image
+                    img_elem = item.locator("img.s-image")
+                    img = img_elem.get_attribute("src", timeout=2000) if img_elem.count() > 0 else None
 
-        for i in range(items.count()):
-            try:
-                title = items.nth(i).locator("h2 a span").inner_text(timeout=2000)
-                link = items.nth(i).locator("h2 a").get_attribute("href")
-                price = items.nth(i).locator(".a-price-whole").inner_text(timeout=2000)
-                img = items.nth(i).locator("img").get_attribute("src")
+                    if title and link:
+                        product_url = f"https://www.amazon.in{link}" if link.startswith("/") else link
+                        results.append({
+                            "title": title.strip(),
+                            "price": price.strip() if price else None,
+                            "vendor": "Amazon India",
+                            "link": product_url,
+                            "image": img,
+                        })
+                except Exception as e:
+                    logger.warning(f"Error parsing Amazon product {i}: {e}")
+                    continue
 
-                if title and link and price and img:
-                    product = Product.objects.create(
-                        title=title,
-                        image_url=img,
-                        price=price.replace(",", ""),
-                        source="Amazon",
-                        product_url="https://www.amazon.in" + link,
-                    )
-                    results.append(product)
-            except:
-                continue
-
-        browser.close()
+            browser.close()
+            logger.info(f"Amazon scraping completed: {len(results)} products found")
+            
+        except Exception as e:
+            logger.error(f"Error scraping Amazon: {e}")
+            
     return results
+
