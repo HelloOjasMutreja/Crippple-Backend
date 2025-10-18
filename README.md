@@ -2,6 +2,8 @@
 
 A Django-based backend service that aggregates apparel search results from multiple e-commerce platforms including Google Shopping, Amazon India, Myntra, and Adidas.
 
+> **✨ Recent Updates**: Web scraping issues fixed! See [QUICK_REFERENCE.md](QUICK_REFERENCE.md) for quick start guide and [SCRAPING_FIXES.md](SCRAPING_FIXES.md) for technical details.
+
 ## Features
 
 - **Unified Search**: Search across multiple platforms with a single API call
