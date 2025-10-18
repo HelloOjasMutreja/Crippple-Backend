@@ -12,11 +12,23 @@ def scrape_google_shopping(query="hoodie", max_results=20, headless=True, config
     results = []
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=headless)
+        browser = p.chromium.launch(
+            headless=headless,
+            args=["--disable-blink-features=AutomationControlled"]
+        )
         context = browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                       "Chrome/117.0.0.0 Safari/537.36"
+                       "Chrome/127.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+            extra_http_headers={
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+                "DNT": "1",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+            }
         )
         page = context.new_page()
 
@@ -27,7 +39,21 @@ def scrape_google_shopping(query="hoodie", max_results=20, headless=True, config
         cards = page.query_selector_all(selectors["product_card"])
         if not cards:
             print("⚠️ No product nodes found. Selectors may be stale. Update google_selectors.json")
-            return []
+            # Try alternative selectors as fallback
+            alternative_selectors = [
+                "div.sh-dgr__grid-result",
+                "div[data-docid]",
+                "div.sh-dgr__content",
+            ]
+            for alt_selector in alternative_selectors:
+                print(f"⚠️ Trying alternative selector: {alt_selector}")
+                cards = page.query_selector_all(alt_selector)
+                if cards:
+                    print(f"✓ Found {len(cards)} products with alternative selector: {alt_selector}")
+                    break
+            
+            if not cards:
+                return []
 
         for card in cards[:max_results]:
             try:

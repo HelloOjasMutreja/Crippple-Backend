@@ -2,6 +2,8 @@
 
 A Django-based backend service that aggregates apparel search results from multiple e-commerce platforms including Google Shopping, Amazon India, Myntra, and Adidas.
 
+> **✨ Recent Updates**: Web scraping issues fixed! See [QUICK_REFERENCE.md](QUICK_REFERENCE.md) for quick start guide and [SCRAPING_FIXES.md](SCRAPING_FIXES.md) for technical details.
+
 ## Features
 
 - **Unified Search**: Search across multiple platforms with a single API call
@@ -212,6 +214,21 @@ Key settings in `crippple_backend/settings.py`:
 
 ## Troubleshooting
 
+### Environment Check
+
+Run the environment checker to verify your setup:
+
+```bash
+python check_environment.py
+```
+
+This will check:
+- Python version
+- Required packages
+- Playwright browser installation
+- Django configuration
+- Scraper modules
+
 ### Playwright Installation Issues
 
 If you encounter issues installing Playwright browsers:
@@ -231,6 +248,12 @@ If scrapers fail:
 2. Verify internet connectivity
 3. Check if website selectors need updating (websites change their HTML structure)
 4. Review error logs for specific platform issues
+
+**See [SCRAPING_FIXES.md](SCRAPING_FIXES.md) for detailed information about recent fixes for:**
+- Myntra HTTP/2 protocol errors
+- Adidas timeout issues
+- Google Shopping stale selectors
+- General anti-scraping improvements
 
 ### Database Connection Issues
 

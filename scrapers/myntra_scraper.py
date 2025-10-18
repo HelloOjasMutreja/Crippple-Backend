@@ -20,24 +20,48 @@ def scrape_myntra(query="hoodie", max_results=20, headless=True):
 
     with sync_playwright() as p:
         try:
-            browser = p.chromium.launch(headless=headless)
+            # Disable HTTP/2 to avoid ERR_HTTP2_PROTOCOL_ERROR
+            browser = p.chromium.launch(
+                headless=headless,
+                args=[
+                    "--disable-http2",
+                    "--disable-blink-features=AutomationControlled",
+                ]
+            )
             context = browser.new_context(
                 user_agent=(
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/115.0 Safari/537.36"
+                    "Chrome/127.0.0.0 Safari/537.36"
                 ),
-                viewport={"width": 1280, "height": 800},
+                viewport={"width": 1920, "height": 1080},
                 extra_http_headers={
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                     "Accept-Language": "en-US,en;q=0.9",
+                    "Accept-Encoding": "gzip, deflate, br",
                     "Referer": "https://www.myntra.com/",
+                    "DNT": "1",
+                    "Connection": "keep-alive",
+                    "Upgrade-Insecure-Requests": "1",
                 },
             )
             page = context.new_page()
 
             url = f"https://www.myntra.com/{query}"
             logger.info(f"Scraping Myntra: {url}")
-            page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            
+            # Try to load the page with retry logic
+            max_retries = 2
+            for attempt in range(max_retries):
+                try:
+                    page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                    break
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Myntra page load attempt {attempt + 1} failed: {e}, retrying...")
+                        page.wait_for_timeout(2000)
+                    else:
+                        raise
 
             page.wait_for_selector(".product-base", timeout=15000)
             items = page.query_selector_all(".product-base")
