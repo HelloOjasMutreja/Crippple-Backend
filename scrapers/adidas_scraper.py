@@ -24,7 +24,11 @@ def scrape_adidas(query: str, max_results=20, headless=True):
         try:
             browser = p.chromium.launch(
                 headless=headless,
-                args=["--disable-http2", "--disable-features=NetworkService"]
+                args=[
+                    "--disable-http2",
+                    "--disable-features=NetworkService",
+                    "--disable-blink-features=AutomationControlled",
+                ]
             )
 
             context = browser.new_context(
@@ -33,7 +37,15 @@ def scrape_adidas(query: str, max_results=20, headless=True):
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
                     "Chrome/127.0.0.0 Safari/537.36"
                 ),
-                viewport={"width": 1280, "height": 800},
+                viewport={"width": 1920, "height": 1080},
+                extra_http_headers={
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "Accept-Encoding": "gzip, deflate, br",
+                    "DNT": "1",
+                    "Connection": "keep-alive",
+                    "Upgrade-Insecure-Requests": "1",
+                },
             )
 
             page = context.new_page()
@@ -46,10 +58,26 @@ def scrape_adidas(query: str, max_results=20, headless=True):
                 logger.warning("playwright-stealth not available, skipping stealth mode")
 
             logger.info(f"Scraping Adidas: {url}")
-            page.goto(url, timeout=60000, wait_until="networkidle")
+            
+            # Try to load the page with fallback wait strategies
+            try:
+                page.goto(url, timeout=60000, wait_until="networkidle")
+            except Exception as e:
+                logger.warning(f"Adidas page load with networkidle failed: {e}, trying domcontentloaded...")
+                try:
+                    page.goto(url, timeout=45000, wait_until="domcontentloaded")
+                    # Give extra time for JS to render products
+                    page.wait_for_timeout(3000)
+                except Exception as e2:
+                    logger.error(f"Adidas page load failed completely: {e2}")
+                    raise
 
-            # Wait for product grid to load
-            page.wait_for_selector("div.gl-product-card", timeout=15000)
+            # Wait for product grid to load with more flexible timeout
+            try:
+                page.wait_for_selector("div.gl-product-card", timeout=20000)
+            except Exception as e:
+                logger.warning(f"Product cards not found within timeout, checking if any loaded: {e}")
+                # Continue anyway in case some products loaded
 
             # Extract products
             product_elements = page.query_selector_all("div.gl-product-card")

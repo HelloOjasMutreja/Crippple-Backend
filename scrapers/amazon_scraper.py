@@ -19,17 +19,32 @@ def scrape_amazon(query="hoodie", max_results=20, headless=True):
     results = []
     with sync_playwright() as p:
         try:
-            browser = p.chromium.launch(headless=headless)
+            browser = p.chromium.launch(
+                headless=headless,
+                args=["--disable-blink-features=AutomationControlled"]
+            )
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                            "AppleWebKit/537.36 (KHTML, like Gecko) "
-                           "Chrome/117.0.0.0 Safari/537.36"
+                           "Chrome/127.0.0.0 Safari/537.36",
+                viewport={"width": 1920, "height": 1080},
+                extra_http_headers={
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "Accept-Encoding": "gzip, deflate, br",
+                    "DNT": "1",
+                    "Connection": "keep-alive",
+                    "Upgrade-Insecure-Requests": "1",
+                }
             )
             page = context.new_page()
             
             url = f"https://www.amazon.in/s?k={query}"
             logger.info(f"Scraping Amazon: {url}")
-            page.goto(url, timeout=30000)
+            page.goto(url, timeout=45000, wait_until="domcontentloaded")
+            
+            # Give time for lazy-loaded content
+            page.wait_for_timeout(2000)
 
             items = page.locator(".s-result-item[data-component-type='s-search-result']")
             count = min(items.count(), max_results)
